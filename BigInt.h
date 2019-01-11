@@ -16,6 +16,7 @@ public:
 	BigInt();
 	BigInt(long long);
 	int get_sign() const;
+	int get_number_of_digits() const;
 	std::vector<int> get_digits() const;
 	BigInt(std::vector<int>, int);
 	BigInt(std::string);

@@ -70,6 +70,10 @@ int BigInt::get_sign() const
 	return sign;
 }
 
+int BigInt::get_number_of_digits() const {
+	return number_of_digits;
+}
+
 std::vector<int> BigInt::get_digits() const
 {
 	return digits;
