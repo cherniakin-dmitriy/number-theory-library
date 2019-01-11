@@ -8,9 +8,9 @@ bool operator>(const BigInt &a, const BigInt &b) {
         return a.get_sign() == 1;
 
     if (a.get_sign() * b.get_sign() == 1) {
-        int reverse = 0;
+        bool reverse = false;
         if (a.get_sign() == -1) // a < 0 && b < 0
-            reverse = 1;
+            reverse = true;
 
         auto a_digits = a.get_digits(), b_digits = b.get_digits();
         if (a_digits.size() != b_digits.size())
@@ -20,7 +20,7 @@ bool operator>(const BigInt &a, const BigInt &b) {
             if (a_digits[i] != b_digits[i])
                 return (a_digits[i] > b_digits[i]) ^ reverse;
 
-        return 0;
+        return false;
     }
 
     return a.get_sign() == 1 || b.get_sign() == -1;
@@ -60,7 +60,7 @@ BigInt abs(const BigInt &a) {
 
 BigInt add_two_positive_numbers(const BigInt &a, const BigInt &b) {
     if (a < 0 || b < 0)
-        throw "Numbers are not positive";
+        throw "NumbersAreNotPositive";
 
     std::vector<int> a_digits(a.get_digits()), b_digits(b.get_digits());
     int sum_number_of_digits = std::max(a_digits.size(), b_digits.size()) + 1;
@@ -91,7 +91,7 @@ BigInt add_two_positive_numbers(const BigInt &a, const BigInt &b) {
 
 BigInt subtract_two_positive_numbers(const BigInt &a, const BigInt &b) {
     if (a < 0 || b < 0)
-        throw "Numbers are not positive";
+        throw "NumbersAreNotPositive";
 
     std::vector<int> a_digits(a.get_digits()), b_digits(b.get_digits());
     std::vector<int> sum_digits;
@@ -146,114 +146,104 @@ BigInt operator*(const BigInt &a, const BigInt &b) {
 }
 
 BigInt operator-(const BigInt &a, const BigInt &b) {
-    return a + -1 * b;
+    return a + (-b);
 }
 
 BigInt operator/(const BigInt &a, const BigInt &b) {
     if (b == 0) throw "DividedByZero";
 
-    std::vector<int> a_digits = a.get_digits();
-    BigInt dividend = 0, divider = abs(b), result = 0;
+    std::vector<int> a_digits = a.get_digits(), dividend, result;
+    BigInt divider = abs(b);
     int p = a_digits.size() - 1;
     while (p >= 0) {
-        if (dividend < divider) {
-            dividend = dividend * BigInt::base;
-            dividend = dividend + a_digits[p];
+        int new_p = p - divider.get_number_of_digits() + dividend.size();
+        new_p = std::max(new_p, -1);
+
+        dividend.insert(dividend.begin(), a_digits.begin() + new_p + 1, a_digits.begin() + p + 1);
+        if (BigInt(dividend, 1) < divider && p >= 0) {
+            dividend.insert(dividend.begin(), a_digits[p]);
             p--;
         }
 
-        while (dividend < divider && p >= 0) {
-            result = result * BigInt::base;
-            dividend = dividend * BigInt::base;
-            dividend = dividend + a_digits[p];
-            p--;
-        }
-
-        if (dividend < divider && p < 0)
-            result = result * 10;
-
-        if (dividend >= divider) {
-            BigInt n_divider = divider;
+        if (BigInt(dividend, 1) >= divider) {
             int k = 1;
-            while (n_divider + divider <= dividend)
-                n_divider = n_divider + divider, k++;
-
-            dividend = dividend - n_divider;
-
-            result = result * 10;
-            result = result + k;
+            BigInt k_divider = divider;
+            BigInt dividend_tmp(dividend, 1);
+            while (k_divider + divider < dividend_tmp) {
+                k_divider = k_divider + divider;
+                k++;
+            }
+            result.push_back(k);
+            dividend = (dividend_tmp - k_divider).get_digits();
         }
     }
 
-    return result * a.get_sign() * b.get_sign();
+    reverse(result.begin(), result.end());
+
+    return BigInt(result, a.get_sign() * b.get_sign());
 }
 
 BigInt operator%(const BigInt &a, const BigInt &b) {
     if (b == 0) throw "DividedByZero";
 
-    std::vector<int> a_digits = a.get_digits();
-    BigInt dividend = 0, divider = abs(b);
+    std::vector<int> a_digits = a.get_digits(), dividend;
+    BigInt divider = abs(b);
     int p = a_digits.size() - 1;
     while (p >= 0) {
-        while (dividend < divider && p >= 0) {
-            dividend = dividend * BigInt::base;
-            dividend = dividend + a_digits[p];
+        int new_p = p - divider.get_number_of_digits() + dividend.size();
+        new_p = std::max(new_p, -1);
+
+        dividend.insert(dividend.begin(), a_digits.begin() + new_p + 1, a_digits.begin() + p + 1);
+        if (BigInt(dividend, 1) < divider && p >= 0) {
+            dividend.insert(dividend.begin(), a_digits[p]);
             p--;
         }
 
-        if (dividend >= divider) {
-            BigInt n_divider = divider;
-            int k = 1;
-            while (n_divider + divider <= dividend)
-                n_divider = n_divider + divider, k++;
-
-            dividend = dividend - n_divider;
+        if (BigInt(dividend, 1) >= divider) {
+            BigInt k_divider = divider;
+            BigInt dividend_tmp(dividend, 1);
+            while (k_divider + divider < dividend_tmp) {
+                k_divider = k_divider + divider;
+            }
+            dividend = (dividend_tmp - k_divider).get_digits();
         }
     }
 
-    dividend = dividend * a.get_sign();
-    if (dividend < 0) dividend = dividend + divider;
-
-    return dividend;
+    return BigInt(dividend, 1);
 }
 
 std::pair<BigInt, BigInt> div(const BigInt &a, const BigInt &b) {
     if (b == 0) throw "DividedByZero";
 
-    std::vector<int> a_digits = a.get_digits();
-    BigInt dividend = 0, divider = abs(b), result = 0;
+    std::vector<int> a_digits = a.get_digits(), dividend, result;
+    BigInt divider = abs(b);
     int p = a_digits.size() - 1;
     while (p >= 0) {
-        if (dividend < divider) {
-            dividend = dividend * 10;
-            dividend = dividend + a_digits[p];
+        int new_p = p - divider.get_number_of_digits() + dividend.size();
+        new_p = std::max(new_p, -1);
+
+        dividend.insert(dividend.begin(), a_digits.begin() + new_p + 1, a_digits.begin() + p + 1);
+        if (BigInt(dividend, 1) < divider && p >= 0) {
+            dividend.insert(dividend.begin(), a_digits[p]);
             p--;
         }
 
-        while (dividend < divider && p >= 0) {
-            result = result * 10;
-            dividend = dividend * 10;
-            dividend = dividend + a_digits[p];
-            p--;
-        }
-
-        if (dividend < divider && p < 0)
-            result = result * 10;
-
-        if (dividend >= divider) {
-            BigInt n_divider = divider;
+        if (BigInt(dividend, 1) >= divider) {
             int k = 1;
-            while (n_divider + divider < dividend)
-                n_divider = n_divider + divider, k++;
-
-            dividend = dividend - n_divider;
-
-            result = result * 10;
-            result = result + k;
+            BigInt k_divider = divider;
+            BigInt dividend_tmp(dividend, 1);
+            while (k_divider + divider < dividend_tmp) {
+                k_divider = k_divider + divider;
+                k++;
+            }
+            result.push_back(k);
+            dividend = (dividend_tmp - k_divider).get_digits();
         }
     }
 
-    return std::make_pair(result * a.get_sign() * b.get_sign(), dividend);
+    reverse(result.begin(), result.end());
+
+    return std::make_pair(BigInt(result, a.get_sign() * b.get_sign()), BigInt(dividend, 1));
 }
 
 BigInt sqrt(const BigInt &a) {
