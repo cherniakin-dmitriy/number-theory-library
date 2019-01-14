@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <utility>
+#include <deque>
 #include <map>
 #include "BigMath.h"
 
@@ -110,6 +111,9 @@ BigInt subtract_two_positive_numbers(const BigInt &a, const BigInt &b) {
         sum_digits.push_back(a_digits[i] - b_digits[i]);
     }
 
+    for (int i = b_digits.size(); i < a_digits.size(); ++i)
+        sum_digits.push_back(a_digits[i]);
+
     return BigInt(sum_digits, sign);
 }
 
@@ -152,30 +156,36 @@ BigInt operator-(const BigInt &a, const BigInt &b) {
 BigInt operator/(const BigInt &a, const BigInt &b) {
     if (b == 0) throw "DividedByZero";
 
-    std::vector<int> a_digits = a.get_digits(), dividend, result;
+    std::vector<int> a_digits = a.get_digits(), result;
+    std::deque<int> dividend;
     BigInt divider = abs(b);
     int p = a_digits.size() - 1;
     while (p >= 0) {
-        int new_p = p - divider.get_number_of_digits() + dividend.size();
-        new_p = std::max(new_p, -1);
-
-        dividend.insert(dividend.begin(), a_digits.begin() + new_p + 1, a_digits.begin() + p + 1);
-        if (BigInt(dividend, 1) < divider && p >= 0) {
-            dividend.insert(dividend.begin(), a_digits[p]);
+        int shift = 0;
+        while (BigInt(dividend, 1) < divider && p >= 0) {
+            dividend.push_front(a_digits[p]);
             p--;
+            shift++;
         }
+
+        for (int i = 0; i < shift - 1; ++i)
+            result.push_back(0);
 
         if (BigInt(dividend, 1) >= divider) {
             int k = 1;
             BigInt k_divider = divider;
             BigInt dividend_tmp(dividend, 1);
-            while (k_divider + divider < dividend_tmp) {
+            while (k_divider + divider <= dividend_tmp) {
                 k_divider = k_divider + divider;
                 k++;
             }
             result.push_back(k);
-            dividend = (dividend_tmp - k_divider).get_digits();
-        }
+
+            auto vec_dividend = (dividend_tmp - k_divider).get_digits();
+            dividend.clear();
+            for (auto t : vec_dividend)
+                dividend.push_back(t);
+        } else result.push_back(0);
     }
 
     reverse(result.begin(), result.end());
@@ -186,64 +196,80 @@ BigInt operator/(const BigInt &a, const BigInt &b) {
 BigInt operator%(const BigInt &a, const BigInt &b) {
     if (b == 0) throw "DividedByZero";
 
-    std::vector<int> a_digits = a.get_digits(), dividend;
+    std::vector<int> a_digits = a.get_digits();
+    std::deque<int> dividend;
     BigInt divider = abs(b);
     int p = a_digits.size() - 1;
     while (p >= 0) {
-        int new_p = p - divider.get_number_of_digits() + dividend.size();
-        new_p = std::max(new_p, -1);
-
-        dividend.insert(dividend.begin(), a_digits.begin() + new_p + 1, a_digits.begin() + p + 1);
-        if (BigInt(dividend, 1) < divider && p >= 0) {
-            dividend.insert(dividend.begin(), a_digits[p]);
+        int shift = 0;
+        while (BigInt(dividend, 1) < divider && p >= 0) {
+            dividend.push_front(a_digits[p]);
             p--;
+            shift++;
         }
 
         if (BigInt(dividend, 1) >= divider) {
             BigInt k_divider = divider;
             BigInt dividend_tmp(dividend, 1);
-            while (k_divider + divider < dividend_tmp) {
+            while (k_divider + divider <= dividend_tmp) {
                 k_divider = k_divider + divider;
             }
-            dividend = (dividend_tmp - k_divider).get_digits();
+
+            auto vec_dividend = (dividend_tmp - k_divider).get_digits();
+            dividend.clear();
+            for (auto t : vec_dividend)
+                dividend.push_back(t);
         }
     }
 
-    return BigInt(dividend, 1);
+    BigInt remainder = BigInt(dividend, 1);
+
+    if (a.get_sign() == 1 || remainder == 0)
+        return remainder;
+    else
+        return b - remainder;
 }
 
 std::pair<BigInt, BigInt> div(const BigInt &a, const BigInt &b) {
     if (b == 0) throw "DividedByZero";
 
-    std::vector<int> a_digits = a.get_digits(), dividend, result;
+    std::vector<int> a_digits = a.get_digits(), result;
+    std::deque<int> dividend;
     BigInt divider = abs(b);
     int p = a_digits.size() - 1;
     while (p >= 0) {
-        int new_p = p - divider.get_number_of_digits() + dividend.size();
-        new_p = std::max(new_p, -1);
-
-        dividend.insert(dividend.begin(), a_digits.begin() + new_p + 1, a_digits.begin() + p + 1);
-        if (BigInt(dividend, 1) < divider && p >= 0) {
-            dividend.insert(dividend.begin(), a_digits[p]);
+        int shift = 0;
+        while (BigInt(dividend, 1) < divider && p >= 0) {
+            dividend.push_front(a_digits[p]);
             p--;
+            shift++;
         }
 
         if (BigInt(dividend, 1) >= divider) {
             int k = 1;
             BigInt k_divider = divider;
             BigInt dividend_tmp(dividend, 1);
-            while (k_divider + divider < dividend_tmp) {
+            while (k_divider + divider <= dividend_tmp) {
                 k_divider = k_divider + divider;
                 k++;
             }
             result.push_back(k);
-            dividend = (dividend_tmp - k_divider).get_digits();
-        }
+
+            auto vec_dividend = (dividend_tmp - k_divider).get_digits();
+            dividend.clear();
+            for (auto t : vec_dividend)
+                dividend.push_back(t);
+        } else result.push_back(0);
     }
 
     reverse(result.begin(), result.end());
 
-    return std::make_pair(BigInt(result, a.get_sign() * b.get_sign()), BigInt(dividend, 1));
+    BigInt remainder = BigInt(dividend, 1);
+
+    if (a.get_sign() != 1 && remainder != 0)
+        remainder = b - remainder;
+
+    return std::make_pair(BigInt(result, a.get_sign() * b.get_sign()), remainder);
 }
 
 BigInt sqrt(const BigInt &a) {
@@ -279,7 +305,7 @@ BigInt divide_modulo(const BigInt &a, const BigInt &b, const BigInt &mod) {
 BigInt big_pow(const BigInt &a, const BigInt &p) {
     if (p == 0) return 1;
 
-    std::pair<BigInt, BigInt> d = std::make_pair(p / 2, p % 2); //div(p, 2);
+    std::pair<BigInt, BigInt> d = div(p, 2);
     BigInt b = big_pow(a, d.first);
     b = b * b;
     if (d.second == 1)
